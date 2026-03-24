@@ -17,9 +17,11 @@ function App() {
     ? ['All', ...Array.from(new Set(hotkeys.map(h => h.type)))] 
     : [];
 
-  const filteredHotkeys = activeTab === 'All' 
+  const currentTab = hotkeyTypes.includes(activeTab) ? activeTab : 'All';
+
+  const filteredHotkeys = currentTab === 'All' 
     ? hotkeys 
-    : hotkeys.filter(h => h.type === activeTab);
+    : hotkeys.filter(h => h.type === currentTab);
 
   return (
     <div className="container">
@@ -44,7 +46,7 @@ function App() {
             </div>
           ) : (
             <div className="hotkeys-container">
-              <HotkeyTabs hotkeyTypes={hotkeyTypes} activeTab={activeTab} setActiveTab={setActiveTab} />
+              <HotkeyTabs hotkeyTypes={hotkeyTypes} activeTab={currentTab} setActiveTab={setActiveTab} />
               <HotkeyGrid filteredHotkeys={filteredHotkeys} toggledHotkeys={toggledHotkeys} triggerHotkey={triggerHotkey} />
             </div>
           )}

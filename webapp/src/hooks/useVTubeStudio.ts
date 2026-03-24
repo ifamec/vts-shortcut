@@ -43,6 +43,33 @@ export function useVTubeStudio() {
           } catch (e: any) {
             console.error("Error fetching model/hotkeys", e);
           }
+
+          // Subscribe to events AFTER authentication
+          vts.events.modelLoaded.subscribe(async (data) => {
+            if (data.modelLoaded) {
+                setCurrentModel({ name: data.modelName, id: data.modelID });
+                try {
+                  const hotkeyRes = await vts.hotkeysInCurrentModel({ modelID: data.modelID });
+                  setHotkeys(hotkeyRes.availableHotkeys || []);
+                } catch (e) {
+                  console.error("Failed model load hotkeys", e);
+                }
+                setToggledHotkeys({});
+            } else {
+                setCurrentModel(null);
+                setHotkeys([]);
+                setToggledHotkeys({});
+            }
+          }, {});
+
+          vts.events.modelConfigChanged.subscribe(async (data) => {
+            if (data.hotkeyConfigChanged) {
+                try {
+                  const hotkeyRes = await vts.hotkeysInCurrentModel({ modelID: data.modelID });
+                  setHotkeys(hotkeyRes.availableHotkeys || []);
+                } catch(e) {}
+            }
+          }, {});
         });
 
         vts.on('disconnect', () => {
@@ -59,32 +86,11 @@ export function useVTubeStudio() {
           }
         });
 
-        vts.events.modelLoaded.subscribe(async (data) => {
-          if (data.modelLoaded) {
-              setCurrentModel({ name: data.modelName, id: data.modelID });
-              const hotkeyRes = await vts.hotkeysInCurrentModel({ modelID: data.modelID });
-              setHotkeys(hotkeyRes.availableHotkeys || []);
-              setToggledHotkeys({});
-          } else {
-              setCurrentModel(null);
-              setHotkeys([]);
-              setToggledHotkeys({});
-          }
-        }, {});
-
-        vts.events.modelConfigChanged.subscribe(async (data) => {
-           if (data.hotkeyConfigChanged) {
-              const hotkeyRes = await vts.hotkeysInCurrentModel({ modelID: data.modelID });
-              setHotkeys(hotkeyRes.availableHotkeys || []);
-           }
-        }, {});
-
       } catch (e: any) {
         console.error(e);
         setError(e.message || 'Failed to initialize VTubeStudio client.');
       }
     };
-
     connectToVTS();
 
     return () => {
