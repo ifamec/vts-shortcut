@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ApiClient } from 'vtubestudio';
+import { QRCodeSVG } from 'qrcode.react';
 import './index.css';
 
 function App() {
@@ -9,10 +10,24 @@ function App() {
   const [toggledHotkeys, setToggledHotkeys] = useState<Record<string, boolean>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [networkLinks, setNetworkLinks] = useState<string[]>([]);
+  const [showNetworkPopup, setShowNetworkPopup] = useState(false);
   const apiRef = useRef<ApiClient | null>(null);
 
   useEffect(() => {
-    if (apiRef.current) return; // Prevent double connection in React StrictMode
+    if (apiRef.current) return; // Prevent double connection in React StrictMode 
+
+    // Fetch Network Links if in Desktop Environment
+    const fetchLinks = async () => {
+      try {
+        const goObj = (window as any).go;
+        if (goObj && goObj.main && goObj.main.App && goObj.main.App.GetNetworkLinks) {
+          const links = await goObj.main.App.GetNetworkLinks();
+          setNetworkLinks(links || []);
+        }
+      } catch(e) { console.error('Failed fetching network links', e); }
+    };
+    fetchLinks();
 
     const connectToVTS = async () => {
       try {
@@ -157,6 +172,16 @@ function App() {
                 Reset Model
               </button>
             )}
+            {networkLinks.length > 0 && (
+              <button className="network-btn" onClick={() => setShowNetworkPopup(true)} title="View Local Network Links">
+                <svg className="network-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                  <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                  <line x1="12" y1="20" x2="12.01" y2="20"/>
+                </svg>
+              </button>
+            )}
             <div className={`status-badge ${isConnected ? 'connected' : 'disconnected'}`}>
               <span className="dot"></span>
               {isConnected ? 'Connected' : 'Disconnected'}
@@ -214,6 +239,29 @@ function App() {
           )}
         </section>
       </main>
+
+      {/* Network Modal */}
+      {showNetworkPopup && (
+        <div className="modal-overlay" onClick={() => setShowNetworkPopup(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Network Access</h2>
+              <button className="close-btn" onClick={() => setShowNetworkPopup(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Scan the QR code or visit the link on your mobile device to control VTubeStudio remotely on port 10086.</p>
+              <div className="links-list">
+                {networkLinks.map(link => (
+                  <div key={link} className="qr-card">
+                    <QRCodeSVG value={link} size={150} level="H" includeMargin={true} />
+                    <a href={link} target="_blank" rel="noreferrer" className="network-link">{link}</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

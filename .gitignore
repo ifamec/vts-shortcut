@@ -1,2 +1,5 @@
-﻿VTubeStudioJS_repo
+build/bin
 node_modules
+frontend/dist
+build
+VTubeStudioJS_repo
