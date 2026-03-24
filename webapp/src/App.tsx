@@ -21,7 +21,7 @@ function App() {
           authTokenSetter: async (token) => { localStorage.setItem('vts_token', token); },
           pluginName: 'VTS Shortcut Web',
           pluginDeveloper: 'Local Developer',
-          url: 'ws://localhost:8001',
+          url: `ws://${window.location.hostname}:8001`,
         });
         
         apiRef.current = vts;
@@ -132,6 +132,16 @@ function App() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState<string>('All');
+
+  const hotkeyTypes = hotkeys.length > 0 
+    ? ['All', ...Array.from(new Set(hotkeys.map(h => h.type)))] 
+    : [];
+
+  const filteredHotkeys = activeTab === 'All' 
+    ? hotkeys 
+    : hotkeys.filter(h => h.type === activeTab);
+
   return (
     <div className="container">
       <header>
@@ -155,7 +165,7 @@ function App() {
         </div>
         <div className="model-bar">
           <span className="model-label">Current Model:</span>
-          <span className="model-name">{currentModel ? `${currentModel.name} (${currentModel.id})` : 'Not Connected'}</span>
+          <span className="model-name">{currentModel ? currentModel.name : 'Not Connected'}</span>
         </div>
       </header>
       
@@ -163,28 +173,43 @@ function App() {
 
       <main>
         <section className="hotkeys-section">
-          <h2>Available Hotkeys</h2>
+          <div className="section-header">
+            <h2>Available Hotkeys</h2>
+          </div>
           {hotkeys.length === 0 ? (
             <div className="empty-state">
               <p>No hotkeys found for this model or not connected.</p>
             </div>
           ) : (
-            <div className="grid">
-              {hotkeys.map((hotkey) => {
-                const isToggled = toggledHotkeys[hotkey.hotkeyID];
-                return (
+            <div className="hotkeys-container">
+              <div className="tabs">
+                {hotkeyTypes.map(type => (
                   <button 
-                    key={hotkey.hotkeyID} 
-                    className={`hotkey-card ${isToggled ? 'toggled' : ''}`}
-                    onClick={(e) => triggerHotkey(hotkey.hotkeyID, e)}
+                    key={type} 
+                    className={`tab-btn ${activeTab === type ? 'active' : ''}`}
+                    onClick={() => setActiveTab(type)}
                   >
-                    <div className="hotkey-content">
-                      <span className="hotkey-name">{hotkey.name}</span>
-                      <span className="hotkey-type">{hotkey.type}</span>
-                    </div>
+                    {type}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              <div className="grid">
+                {filteredHotkeys.map((hotkey) => {
+                  const isToggled = toggledHotkeys[hotkey.hotkeyID];
+                  return (
+                    <button 
+                      key={hotkey.hotkeyID} 
+                      className={`hotkey-card ${isToggled ? 'toggled' : ''}`}
+                      onClick={(e) => triggerHotkey(hotkey.hotkeyID, e)}
+                    >
+                      <div className="hotkey-content">
+                        <span className="hotkey-name">{hotkey.name}</span>
+                        <span className="hotkey-type">{hotkey.type}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>
