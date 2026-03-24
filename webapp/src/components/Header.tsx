@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 interface HeaderProps {
   currentModel: { name: string; id: string } | null;
@@ -12,7 +12,12 @@ export function Header({ currentModel, isConnected, networkLinks, resetModel, se
   return (
     <header>
       <div className="header-content">
-        <h1>VTubeStudio Shortcuts</h1>
+        <h1>
+          VTubeStudio Shortcuts
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginLeft: '12px', fontWeight: 'normal' }}>
+            v1.0.0-alpha
+          </span>
+        </h1>
         <div className="header-actions">
           {currentModel && (
             <button className="reset-btn" onClick={resetModel} title="Reload model to clear all toggled states">

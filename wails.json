@@ -9,5 +9,9 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Local Developer"
+  },
+  "info": {
+    "productName": "vts-shortcut",
+    "productVersion": "1.0.0-alpha"
   }
 }

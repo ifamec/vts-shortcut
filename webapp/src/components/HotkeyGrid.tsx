@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface HotkeyGridProps {
   filteredHotkeys: any[];
   toggledHotkeys: Record<string, boolean>;

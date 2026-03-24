@@ -4,6 +4,8 @@ import { ApiClient } from 'vtubestudio';
 export function useVTubeStudio() {
   const [api, setApi] = useState<ApiClient | null>(null);
   const [currentModel, setCurrentModel] = useState<{name: string, id: string} | null>(null);
+  const [expressions, setExpressions] = useState<any[]>([]);
+  const [toggledExpressions, setToggledExpressions] = useState<Record<string, boolean>>({});
   const [hotkeys, setHotkeys] = useState<any[]>([]);
   const [toggledHotkeys, setToggledHotkeys] = useState<Record<string, boolean>>({});
   const [isConnected, setIsConnected] = useState(false);
@@ -34,29 +36,54 @@ export function useVTubeStudio() {
             const modelRes = await vts.currentModel();
             if (modelRes.modelLoaded) {
               setCurrentModel({ name: modelRes.modelName, id: modelRes.modelID });
+              const expRes = await vts.expressionState({ details: true });
+              setExpressions(expRes.expressions || []);
+              
+              const toggled: Record<string, boolean> = {};
+              (expRes.expressions || []).forEach((exp: any) => {
+                 toggled[exp.file] = exp.active;
+              });
+              setToggledExpressions(toggled);
+
               const hotkeyRes = await vts.hotkeysInCurrentModel({ modelID: modelRes.modelID });
               setHotkeys(hotkeyRes.availableHotkeys || []);
+
             } else {
               setCurrentModel(null);
+              setExpressions([]);
+              setToggledExpressions({});
               setHotkeys([]);
+              setToggledHotkeys({});
             }
           } catch (e: any) {
-            console.error("Error fetching model/hotkeys", e);
+            console.error("Error fetching model data", e);
           }
 
-          // Subscribe to events AFTER authentication
           vts.events.modelLoaded.subscribe(async (data) => {
             if (data.modelLoaded) {
                 setCurrentModel({ name: data.modelName, id: data.modelID });
                 try {
-                  const hotkeyRes = await vts.hotkeysInCurrentModel({ modelID: data.modelID });
+                  const [expRes, hotkeyRes] = await Promise.all([
+                      vts.expressionState({ details: true }),
+                      vts.hotkeysInCurrentModel({ modelID: data.modelID })
+                  ]);
+                  
+                  setExpressions(expRes.expressions || []);
+                  const toggled: Record<string, boolean> = {};
+                  (expRes.expressions || []).forEach((exp: any) => {
+                     toggled[exp.file] = exp.active;
+                  });
+                  setToggledExpressions(toggled);
+
                   setHotkeys(hotkeyRes.availableHotkeys || []);
+                  setToggledHotkeys({});
                 } catch (e) {
-                  console.error("Failed model load hotkeys", e);
+                  console.error("Failed model load fetches", e);
                 }
-                setToggledHotkeys({});
             } else {
                 setCurrentModel(null);
+                setExpressions([]);
+                setToggledExpressions({});
                 setHotkeys([]);
                 setToggledHotkeys({});
             }
@@ -70,11 +97,13 @@ export function useVTubeStudio() {
                 } catch(e) {}
             }
           }, {});
+
         });
 
         vts.on('disconnect', () => {
           setIsConnected(false);
           setCurrentModel(null);
+          setExpressions([]);
           setHotkeys([]);
           setApi(null);
         });
@@ -91,6 +120,7 @@ export function useVTubeStudio() {
         setError(e.message || 'Failed to initialize VTubeStudio client.');
       }
     };
+
     connectToVTS();
 
     return () => {
@@ -120,15 +150,44 @@ export function useVTubeStudio() {
     }
   }, [api]);
 
+  const toggleExpression = useCallback(async (expressionFile: string, currentlyActive: boolean, e: React.MouseEvent<HTMLButtonElement>) => {
+    setToggledExpressions(prev => ({
+      ...prev,
+      [expressionFile]: !currentlyActive
+    }));
+
+    e.currentTarget.classList.add('active-anim');
+    setTimeout(() => {
+        e.currentTarget.classList.remove('active-anim');
+    }, 200);
+
+    if (!api) return;
+    try {
+      await api.expressionActivation({ expressionFile, active: !currentlyActive });
+    } catch (err: any) {
+      console.error('Failed to toggle expression', err);
+      // rollback UI
+      setToggledExpressions(prev => ({
+        ...prev,
+        [expressionFile]: currentlyActive
+      }));
+    }
+  }, [api]);
+
   const resetModel = useCallback(async () => {
     if (!api || !currentModel) return;
     try {
       await api.modelLoad({ modelID: currentModel.id });
+      setToggledExpressions({});
       setToggledHotkeys({});
     } catch (err: any) {
       console.error('Failed to reset model', err);
     }
   }, [api, currentModel]);
 
-  return { api, currentModel, hotkeys, toggledHotkeys, isConnected, error, triggerHotkey, resetModel };
+  return { 
+    api, currentModel, isConnected, error, resetModel,
+    expressions, toggledExpressions, toggleExpression,
+    hotkeys, toggledHotkeys, triggerHotkey 
+  };
 }
